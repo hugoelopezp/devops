@@ -1,0 +1,55 @@
+---
+- hosts: all
+  tasks:
+    - name: Install dependencies
+      apt:
+        name:
+          - perl
+          - gcc
+          - make
+        state: present
+
+    - name: Get OpenSSL source
+      get_url:
+        url: https://www.openssl.org/source/openssl-1.1.1n.tar.gz
+        dest: /tmp/
+
+    - name: Create OpenSSL directory
+      file:
+        path: /opt/openssl
+        state: directory
+
+    - name: Extract sources
+      command: tar xfzv /tmp/openssl-1.1.1n.tar.gz --directory /opt/openssl
+
+    - name: Build
+      command:
+        cmd: ./config --prefix=/opt/openssl --openssldir=/opt/openssl/ssl
+        chdir: /opt/openssl/openssl-1.1.1n
+
+    - name: Make
+      make:
+        chdir: /opt/openssl/openssl-1.1.1n
+
+    - name: Make install
+      make:
+        target: install
+        chdir: /opt/openssl/openssl-1.1.1n
+
+
+    - name: Backup old installation
+      command: mv /usr/bin/openssl /usr/bin/openssl.old
+
+    - name: Create symbolic link to new version
+      command: ln -s /opt/openssl/bin/openssl /usr/bin/openssl
+
+    - name: Add ld path to openssl config
+      lineinfile:
+        path: /etc/ld.so.conf.d/openssl.conf
+        line: /opt/openssl/lib
+        state: present
+        create: yes
+        backup: yes
+
+    - name: Update cache
+      command: ldconfig
